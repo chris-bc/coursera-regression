@@ -5,65 +5,81 @@ date: "19 October 2015"
 output: pdf_document
 ---
 
-Analyse any relationship between transmission type and fuel efficiency as measured in miles per gallon.
+## Objective: Analyse any relationship between transmission type and fuel efficiency as measured in miles per gallon.
 
+### Executive Summary
+An analysis of the mtcars dataset indicates a superficial relationship between fuel efficiency, as measured in miles per gallon, and transmission type (automatic or manual), however closer investigation shows this relationship to be inseparable from other factors within an appropriate confidence interval (in other words, the relationship found is within two standard deviations of zero). The most appropriate model found a coefficient of **2.08** associated with a manual transmission, however a standard error of **2.64** which indicates no clear association.
+
+### Investigation
 Initially let's look at a simple linear regression between the two variables:
 ```{r}
 
 fit1 <- lm(mpg ~ am, mtcars)
-summary(fit1)
+summary(fit1)$coef
 
 ```
 
 This suggests a strong positive relationship between the two variables. am coefficient 7.245 is well removed from 2*std. error (1.764), and t-value probability approaches zero, indicating a strong probability.
 
-Residual standard error appears significant so let's look at residuals.
-
-```{r}
-
-autos<-mtcars[which(mtcars$am==0),]
-manuals<-mtcars[which(mtcars$am==1),]
-library(ggplot2)
-plot(mtcars$am, resid(fit1))
-plot(autos$mpg, resid(fit1)[which(mtcars$am==0)], col="red", xlim=c(10,35),ylim=c(-10,10))
-points(manuals$mpg, resid(fit1)[which(mtcars$am==1)], col="blue")
-```
+A residual plot is depicted in *figure 1*.
 
 It is clear that there's a strong correlation between the two variables, but with residuals increasing as mpg increases there's more to the story so a more detailed model is required.
 
 ```{r}
-
-summary(glm(mpg~.,data=mtcars))
-plot(mtcars$mpg, resid(glm(mpg~.,data=mtcars)))
-
+summary(glm(mpg~.,data=mtcars))$coef
 ```
 
-This shows a series of residuals lacking a pattern, indicating a candidate model, but with all of our coefficients being within 2 standard errors of zero fails to provide any insight.
+This shows all coefficients being within 2 standard errors of zero, failing to provide any insight.
 
 ```{r}
-
 fit2<-glm(mpg~am+cyl+wt,data=mtcars)
-fit3<-glm(mpg~am+hp+wt,data=mtcars)
-summary(fit2)
-summary(fit3)
-plot(mtcars$mpg, resid(fit2))
-plot(mtcars$mpg,resid(fit3))
-
+summary(fit2)$coef
 ```
 
-These models show a good spread of residuals but fails to show a correlation (within 2s.d. of 0) between mpg and transmission.
-
-As shown below both poisson and binomial models olso present models that appear to have high certainty but which have a strong pattern in their residuals.
-
 ```{r}
+fit3<-glm(mpg~am+hp+wt,data=mtcars)
+summary(fit3)$coef
+```
+
+*Figure 2* and *Figure 3* show residual plots of these models,depicting a good spread of residuals but failing to show a correlation (within 2s.d. of 0) between mpg and transmission.
+
+As shown below and in *figure 4* both poisson and binomial models olso present models that appear to have high certainty but which have a strong pattern in their residuals. Similar variants of these models controlling for additional predictor variables fail to identify a significant pattern.
+
+```{r, message=FALSE, warning=FALSE}
 fitP<-glm(mpg~am,data=mtcars,family="poisson")
+summary(fitP)$coef
 fitP2<-glm(mpg~.,data=mtcars,family="poisson")
+summary(fitP2)$coef
 fitB<-glm(am~mpg,data=mtcars,family="binomial")
-summary(fitP)
-summary(fitP2)
-summary(fitB)
+summary(fitB)$coef
+```
+
+No suitable model can be found predicting miles per gallon based on transmission type that is free from other significant influences and with significant confidence.
+
+# Appendix: Additional figures
+
+### Figure 1 - Initial residuals plot
+```{r, echo=FALSE}
+autos<-mtcars[which(mtcars$am==0),]
+manuals<-mtcars[which(mtcars$am==1),]
+plot(autos$mpg, resid(fit1)[which(mtcars$am==0)], col="red", xlim=c(10,35),ylim=c(-10,10))
+points(manuals$mpg, resid(fit1)[which(mtcars$am==1)], col="blue")
+legend(25,-5,pch=c(1,1),col=c("red","blue"),legend=c("automatic","manual"))
+```
+
+### Figure 2 - Residuals with additional predictors transmission, cylinders, weight
+```{r, echo=FALSE}
+plot(mtcars$mpg, resid(fit2))
+```
+
+### Figure 3 - Residuals with additional predictors transmission, horsepower, weight
+```{r, echo=FALSE}
+plot(mtcars$mpg,resid(fit3))
+```
+
+### Figure 4 - Residual plots of poisson and binomial models
+```{r}
 plot(mtcars$mpg,resid(fitP), col="red")
 points(mtcars$mpg,resid(fitB),col="blue")
 legend(26,-1,c("Poisson model","Binomial model"),pch=c(1,1),col=c("red","blue"))
-
 ```
